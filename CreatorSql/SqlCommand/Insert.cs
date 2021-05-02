@@ -33,64 +33,77 @@ namespace CreatorSql.SqlCommand
             var schemaProvider = context.DataProvider.GetSchemaProvider();
             var schema = schemaProvider.GetSchema(context, new GetSchemaOptions());
             var tableScheme = schema.Tables.Where(c => c.TableName == this._className).FirstOrDefault();
-
-
+            
 
             var values = (List<object>)this.Fields[0].Value;
             for (int i = 0; i < values.Count; i++)
             {
                 var fields = (Dictionary<string, object>)values[i];
+
                 script.AppendLine("INSERT INTO " + this.ClassName);
-                script.AppendLine("(");
+
+                System.Text.StringBuilder colunas = new StringBuilder();
+                System.Text.StringBuilder valores = new StringBuilder();
+
+                var primeiraLinha = true;
+
+                colunas.AppendLine("(");
+                valores.AppendLine(")VALUES(");
+
                 foreach (var field in fields)
                 {
-                    var column = tableScheme.Columns.Where(c => c.ColumnName == field.Key).FirstOrDefault();
+                    var columnProperty = tableScheme.Columns.Where(c => c.ColumnName == field.Key).FirstOrDefault();
 
-                    if (column != null)
+                    if (columnProperty != null)
                     {
-                        script.AppendLine($"\t ,{field.Key}");
-                    }
-                }
-                script.AppendLine(")VALUES(");
-                foreach (var field in fields)
-                {
-                    var column = tableScheme.Columns.Where(c => c.ColumnName == field.Key).FirstOrDefault();
-
-                    if (column != null)
-                    {
-                        if (field.Value == null)
+                        if (!primeiraLinha)
                         {
-                            script.AppendLine($"\t ,NULL");
+                            colunas.AppendLine(",");
+                            valores.AppendLine(",");
                         }
                         else
                         {
-                            if (column.DataType == LinqToDB.DataType.VarChar || 
-                                column.DataType == LinqToDB.DataType.Date ||
-                                column.DataType == LinqToDB.DataType.DateTime ||
-                                column.DataType == LinqToDB.DataType.NVarChar || 
-                                column.DataType == LinqToDB.DataType.NChar ||
-                                column.DataType == LinqToDB.DataType.Text ||
-                                column.DataType == LinqToDB.DataType.NText)
+                            primeiraLinha = false;
+                        }
+
+                        colunas.AppendLine($"\t {field.Key}");
+                        if (field.Value == null)
+                        {
+                            valores.AppendLine($"\t NULL");
+                        }
+                        else
+                        {
+                            if (columnProperty.DataType == LinqToDB.DataType.VarChar ||
+                                columnProperty.DataType == LinqToDB.DataType.Date ||
+                                columnProperty.DataType == LinqToDB.DataType.DateTime ||
+                                columnProperty.DataType == LinqToDB.DataType.NVarChar ||
+                                columnProperty.DataType == LinqToDB.DataType.NChar ||
+                                columnProperty.DataType == LinqToDB.DataType.Text ||
+                                columnProperty.DataType == LinqToDB.DataType.NText)
                             {
 
-                                script.AppendLine($"\t ,'{field.Value?.ToString()}'");
+                                valores.AppendLine($"\t '{field.Value?.ToString()}'");
 
                             }
-                            else if (column.DataType == LinqToDB.DataType.Double)
+                            else if (columnProperty.DataType == LinqToDB.DataType.Double)
                             {
 
-                                script.AppendLine($"\t ,{field.Value?.ToString().Replace(',','.')}");
+                                valores.AppendLine($"\t {field.Value?.ToString().Replace(',', '.')}");
 
                             }
                             else
                             {
-                                script.AppendLine($"\t ,{field.Value?.ToString() ?? "null"}");
+                                valores.AppendLine($"\t {field.Value?.ToString() ?? "null"}");
                             }
+                      
                         }
+
                     }
                 }
-                script.AppendLine(");");
+                valores.AppendLine(");");
 
+                script.Append(colunas);
+                script.Append(valores);
 
                 script.Append(Environment.NewLine);
             }
